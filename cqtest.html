@@ -179,6 +179,56 @@ var CommandQueue;
 //});
 </script>
 
+var queue = function() {
+    this.stack = [];
+}
+
+queue.prototype.start = function() {
+    console.log('start');
+    var funct = this.stack.pop();
+    var self = this;    
+    if (funct) {
+        funct.call().then(function() { self.start(); });
+    }
+}
+
+queue.prototype.add = function(cmd) {
+    this.stack.unshift(cmd);   
+}
+
+var cmd = function() {
+    this.work = function() {
+        var deferred = new $.Deferred();
+        
+        setTimeout(function() {
+           console.log('yay, i workde');
+           deferred.resolve();
+        }, 2000);
+        return deferred.promise();
+    }
+}
+
+var q = new queue();
+
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+q.add(new cmd().work);
+
+q.start();
 
 
 
