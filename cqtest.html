@@ -1,17 +1,17 @@
 <html>
 <head>
-	<script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 </head>
-	<body>
-		<button id="add">Add</button>
-		<button id="start">Start</button>
+    <body>
+        <button id="add">Add</button>
+        <button id="start">Start</button>
 
-		<ul id="log"></ul>
+        <ul id="log"></ul>
 
-		<h1 id="complete"></h1>
+        <h1 id="complete"></h1>
 
 <script>
-	
+    
 var CommandQueue;
 
 /* Simple JavaScript Inheritance
@@ -82,156 +82,76 @@ var CommandQueue;
 (function() {
 
     Command = Class.extend({
-        init: function (method, args, context) {
-            // method, args, context
+        init: function (ctxt, method, args) {
+            this.ctxt = ctxt;
             this.method = method;
             this.args = args;
-            this.context = context;
         }
+    })
+
+    CommandQueue = Class.extend({
+        stack: [],
+        running: false
     });
-
-	CommandQueue = Class.extend({        
-        firstCommand: null,
-        startCmd: null
-	});	
-	var CQ = CommandQueue.prototype;	
-
-    var lastPromise = null;    
+    var CQ = CommandQueue.prototype;
 
     CQ.start = function() {
-        this.startCmd();
-        // var startCmd = new Command(function (complete) { complete() }, [], this)
-        // this.addCommand(startCmd, true);
-    }   
-    
-    CQ.addCommand = function(cmd) {
-        // var self = this;      
-        // if (!this.firstCommand) {         
-        //     this.firstCommand = true;
-        //     console.log('adding first command')
-
-        //     this.addCommand(new Command(function (complete) { self.startCmd = complete }, [], this) );
-        //     this.addCommand(cmd);
-
-        //     return;
-        // }
-        console.log('adding command');
-
-    	var method = cmd.method;
-    	var args = cmd.args;
-    	var context = cmd.context;
-
-        var methodDeferred = $.Deferred();
-        var queueDeferred = this.setup();       
-
-        // execute next queue method
-        queueDeferred.done(function() {
-
-            // call actual method and wrap output in deferred
-            args = (Object.prototype.toString.apply(args) === '[object Array]') ? args : [args];
-            args.push(methodDeferred.resolve);
-            
-            method.apply(context, args);
-        });
-        lastPromise = methodDeferred.promise();
-    };
-
-    CQ.setup = function() {
-        var queueDeferred = $.Deferred();
-
-        // when the previous method returns, resolve this one
-        $.when(lastPromise).done(function() {
-            console.log('executing command');
-            queueDeferred.resolve();
-        });
-
-        return queueDeferred.promise();
+        
+        var cmd = this.stack.pop();
+        var self = this;    
+        
+        this.running == false && console.group('start');
+        
+        if (cmd) {
+            this.running = true;
+            this._runCommand(cmd).then(function() { self.start(); });
+        }
+        else {
+            this.running = false;
+            console.warn('stop');
+        }
     }
 
-    CQ.clear = function () {
-        this.firstCommand = null;
-        this.startCmd = null;
+    CQ.add = function(cmd) {
+        this.stack.unshift(cmd);   
+    }
+
+    CQ._runCommand = function(cmd) {
+        var deferred = new $.Deferred();
+
+        cmd.args = (Object.prototype.toString.apply(cmd.args) === '[object Array]') ? cmd.args : [cmd.args];
+        cmd.args.push(deferred.resolve);
+
+        cmd.method.apply(cmd.context, cmd.args)
+
+        return deferred.promise();
     }
 
 })();
 
-//$(document).ready(function() {
-	var cq = new CommandQueue();
-	var count = 0;
-	var ctxt = this;
+    var cq = new CommandQueue();
+    var count = 0;
+    var ctxt = this;
 
-	$('#add').on('click', function () {
-		var cmd = cq.addCommand(new Command(log, count, ctxt));
+    $('#add').on('click', function () {
+        var cmd = cq.add(new Command(ctxt, log, count));
 
-		count++;
-	})
+        count++;
+    })
 
     $('#start').on('click', function() {
         cq.start();        
     })
 
-	function log(i, complete) {
-		$('#log').append($('<li></li>').text('logged item ' +i));
-		setTimeout(function() {
-			complete();
-		}, 2000);
-	}
-//});
+    function log(i, complete) {       
+        setTimeout(function() {
+            $('#log').append($('<li></li>').text('logged item ' +i));
+            complete();
+        }, 2000);
+    }
 </script>
 
-var queue = function() {
-    this.stack = [];
-}
-
-queue.prototype.start = function() {
-    console.log('start');
-    var funct = this.stack.pop();
-    var self = this;    
-    if (funct) {
-        funct.call().then(function() { self.start(); });
-    }
-}
-
-queue.prototype.add = function(cmd) {
-    this.stack.unshift(cmd);   
-}
-
-var cmd = function() {
-    this.work = function() {
-        var deferred = new $.Deferred();
-        
-        setTimeout(function() {
-           console.log('yay, i workde');
-           deferred.resolve();
-        }, 2000);
-        return deferred.promise();
-    }
-}
-
-var q = new queue();
-
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-q.add(new cmd().work);
-
-q.start();
 
 
-
-
-	</body>
+    </body>
 </html>
