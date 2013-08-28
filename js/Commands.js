@@ -9,13 +9,18 @@
     })
 
     CommandQueue = Class.extend({
-        stack: [],
-        running: false
+        init: function () {
+            this.stack = [];
+            this.running = false;
+            this.onComplete = null;
+        }
     });
     var CQ = CommandQueue.prototype;
 
-    CQ.start = function() {
-        
+    CQ.start = function(onComplete) {       
+
+        if (onComplete) this.onComplete = onComplete;
+
         var cmd = this.stack.pop();
         var self = this;    
         
@@ -26,8 +31,10 @@
             this._runCommand(cmd).then(function() { self.start(); });
         }
         else {
+            if (this.onComplete) this.onComplete();
             this.running = false;
             console.warn('commands complete');
+            console.groupEnd()
         }
     }
 
@@ -36,9 +43,13 @@
     }
 
     CQ._runCommand = function(cmd) {
-        var deferred = new $.Deferred();
+        var deferred = new j.Deferred();
 
-        cmd.args = (Object.prototype.toString.apply(cmd.args) === '[object Array]') ? cmd.args : [cmd.args];
+        if (cmd.args)
+            cmd.args = (Object.prototype.toString.apply(cmd.args) === '[object Array]') ? cmd.args : [cmd.args];
+        else 
+            cmd.args = [];
+
         cmd.args.push(deferred.resolve);
 
         cmd.method.apply(cmd.context, cmd.args)
@@ -46,4 +57,34 @@
         return deferred.promise();
     }
 
+    CQ.clear = function() {
+        this.stack = [];
+        this.onComplete = null;
+        console.warn('commands cleared');
+        this.start();
+    }
+
 })();
+
+    // Example of how to use the command queue
+
+    // var cq = new CommandQueue();
+    // var count = 0;
+    // var ctxt = this;
+
+    // $('#add').on('click', function () {
+    //     var cmd = cq.add(new Command(ctxt, log, count));
+
+    //     count++;
+    // })
+
+    // $('#start').on('click', function() {
+    //     cq.start();        
+    // })
+
+    // function log(i, complete) {       
+    //     setTimeout(function() {
+    //         $('#log').append($('<li></li>').text('logged item ' +i));
+    //         complete();
+    //     }, 2000);
+    // }
